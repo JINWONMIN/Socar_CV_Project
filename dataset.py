@@ -40,10 +40,11 @@ class CustomDataset(torch.utils.data.Dataset):
         img_path = "accida_segmentation_dataset_v1/" + self.class_ + '/' + self.mode + '/images'
         mask_path = "accida_segmentation_dataset_v1/" + self.class_ + '/' + self.mode + '/masks'
 
-        # img = plt.imread(os.path.join(img_path, self.lst_data[index]))
-        # mask = plt.imread(os.path.join(mask_path, self.lst_data[index]), cv2.IMREAD_GRAYSCALE)
-        img = np.array(Image.open(os.path.join(img_path, self.lst_data[index])).convert('RGB'))
-        mask = np.array(Image.open(os.path.join(mask_path, self.lst_data[index])).convert('L'), dtype=np.float32)
+        img = plt.imread(os.path.join(img_path, self.lst_data[index]))
+        mask = plt.imread(os.path.join(mask_path, self.lst_data[index]))
+        mask = cv2.cvtColor(mask, cv2.COLOR_RGB2GRAY)
+        # img = np.array(Image.open(os.path.join(img_path, self.lst_data[index])).convert('RGB'))
+        # mask = np.array(Image.open(os.path.join(mask_path, self.lst_data[index])).convert('L'), dtype=np.float32)
 
         # 이미지를 normalization 해주는 경우는 data type이 uint8인 경우에만 해줘서 data type이 uint8인 경우에만
         # 정규화 해주는 코드 작성
@@ -59,8 +60,10 @@ class CustomDataset(torch.utils.data.Dataset):
         if mask.ndim == 2:
             mask = mask[:, :, np.newaxis]
 
-        label = mask.transpose((2, 0, 1))
-        input = img.transpose((2, 0, 1))
+        # label = mask.transpose((2, 0, 1))
+        # input = img.transpose((2, 0, 1))
+        input = img
+        label = mask
 
         if self.task == "denoising":
             input = add_noise(img, type=self.opts[0], opts=self.opts[1])
@@ -69,31 +72,45 @@ class CustomDataset(torch.utils.data.Dataset):
         elif self.task == "super_resolution":
             input = add_blur(img, type=self.opts[0], opts=self.opts[1])
 
+        data = {'input': input, 'label': label}
 
         if self.transform:  # transform function를 data loader의 argument로 넣어주고,
-            input = self.transform(input) # transform 함수가 정의 되어 이싸면, transform 함수르 통과한 data를 리턴
+            data = self.transform(data) # transform 함수가 정의 되어 이싸면, transform 함수르 통과한 data를 리턴
 
-        return input, label
+        return data
 
-# class Normalize(object):
+class ToTensor(object):
+    def __call__(self, data):
+        input, label = data['input'], data['label']
+
+        input = input.transpose((2, 0, 1)).astype(np.float32)
+        label = label.transpose((2, 0, 1)).astype(np.float32)
+
+        data = {'input': torch.from_numpy(input), 'label': torch.from_numpy(label)}
+
+        return data
+
+class Normalization(object):    # https://jh-bk.tistory.com/24
+    def __init__(self, mean=0.5, std=0.5):
+        self.mean = mean
+        self.std = std
+
+    def __call__(self, data):
+        input, label = data['input'], data['label']
+
+        input = (input - self.mean) / self.std
+        label = (label - self.mean) / self.std
+
+        data = {'input': input, 'label': label}
+
+        return data
 
 if __name__ == "__main__":
-    test = CustomDataset(class_="spacing", mode="valid")
+    test_transform = transforms.Compose([Normalization(mean=0.5, std=0.5), ToTensor()])
+    test = CustomDataset(class_="spacing", mode="valid", transform=test_transform)
     print(len(test))
     loader = torch.utils.data.DataLoader(test)
-    for img, label in loader:
-        print(img.shape)
-        print(label.shape)
+    for idx in loader:
+        print(idx['input'].shape)
+        print(idx['label'].shape)
         break
-
-
-
-# class RandomFlip(object):
-#     def __init__(self, shape):
-#         self.shape = shape
-#
-#     def __call__(self, input, label):
-
-
-
-
