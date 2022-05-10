@@ -1,7 +1,7 @@
 ### DeepLabv3 Model
 
 Torchvision has pre-trained models available and I shall be using one of those models. <br>
-Output channels are number of classes
+Output channels are number of classes.
 
 1. First, I get the pre-trained model using the <br>
    models.segmentation.deeplabv3_resnet101 method that downloads the pre-trained model into our system cache. Note resnet101 is the backbone for the deeplabv3 model obtained from this particular method. This decides the feature vector length that is passed onto the classifier.
