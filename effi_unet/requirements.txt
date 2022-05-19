@@ -1,0 +1,4 @@
+efficientnet-pytorch==0.7.1
+albumentations==1.1.0
+wandb==0.12.6
+adabelief-pytorch==0.2.1
